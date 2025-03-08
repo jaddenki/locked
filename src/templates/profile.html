@@ -12,15 +12,14 @@
         <p>Last Name: {{ user_info['last_name'] }}</p>
         <p>Email: {{ user_info['email'] }}</p>
         <h3>Posts</h3>
-        <h3>Last 10 Games Summary</h3>
-{% if match_stats.error %}
-<p>Error: {{ match_stats.error }}</p>
-{% else %}
-<p>Total Wins: {{ match_stats.total_wins }}</p>
-<p>Total Losses: {{ match_stats.total_losses }}</p>
-<p>Total Playtime (Last 7 Days): {{ match_stats.total_playtime }}</p>
-{% endif %}
-
+        <h3>League Stats</h3>
+        {% if match_stats.error %}
+        <p>Error: {{ match_stats.error }}</p>
+        {% else %}
+        <p>{{ match_stats.riot_username }}#{{ match_stats.riot_tag }} has played {{ match_stats.total_playtime }} of league in the last week. point and laugh.</p>
+        <p>wins: {{ match_stats.total_wins }}</p>
+        <p>losses: {{ match_stats.total_losses }}</p>
+        {% endif %}
 
         <a href="{{ url_for('create_post', hashed_id=hashed_id) }}">Create New Post</a>
         <ul>

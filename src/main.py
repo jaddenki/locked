@@ -1,22 +1,9 @@
-# ######################################################
-# Author : Jadden Picardal
-# email : jpicarda@purdue.edu
-# ID : ee364b17
-# Date : 03/04/2025
-# ######################################################
-
 from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 import hashlib
 import datetime
 import requests
 from datetime import datetime, timedelta
-
-# ######################################################
-# No Module - Level Variables or Statements !
-# ONLY FUNCTIONS BEYOND THIS POINT !
-# ######################################################
-
 
 app = Flask(__name__)
 
@@ -29,8 +16,6 @@ def get_db_connection():
 
 def hash_string(s):
     return hashlib.sha256(s.encode()).hexdigest()
-
-# https://unogeeks.com/python-sha256/
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/register', methods=['GET', 'POST'])
@@ -95,11 +80,10 @@ def profile(hashed_id):
     posts = conn.execute('SELECT * FROM posts WHERE user_id = ? ORDER BY timestamp DESC', (user['id'],)).fetchall()
     conn.close()
     
-    match_stats = get_match_stats("kiwi#rii")
+    riot_id = "qqiangi#NA1"
+    match_stats = get_match_stats(riot_id)
     
     return render_template('profile.html', user_info=user_info, posts=posts, hashed_id=hashed_id, match_stats=match_stats)
-
-
 
 
 @app.route('/<hashed_id>/create', methods=['GET', 'POST'])
@@ -142,64 +126,69 @@ def delete_post(post_id, hashed_id):
 def get_match_stats(riot_id):
     base_url = "https://americas.api.riotgames.com"
 
-    summoner_name, tagline = riot_id.split("#")
-
-    account_url = f"{base_url}/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tagline}"
-    response = requests.get(account_url, headers={"X-Riot-Token": RIOT_API_KEY})
-
-    if response.status_code != 200:
-        return {"error": "Failed to fetch account data (Check Riot ID format)"}
-
-    account_data = response.json()
-    puuid = account_data["puuid"]
-
-    match_url = f"{base_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=10"
-    response = requests.get(match_url, headers={"X-Riot-Token": RIOT_API_KEY})
-
-    if response.status_code != 200:
-        return {"error": "Failed to fetch match history"}
-
-    match_ids = response.json()
-    if not match_ids:
-        return {"error": "No matches found"}
-
-    total_wins = 0
-    total_losses = 0
-    total_playtime = 0
-    one_week_ago = datetime.utcnow() - timedelta(days=7)
-
-    for match_id in match_ids:
-        match_detail_url = f"{base_url}/lol/match/v5/matches/{match_id}"
-        response = requests.get(match_detail_url, headers={"X-Riot-Token": RIOT_API_KEY})
+    try:
+        summoner_name, tagline = riot_id.split("#")
+        account_url = f"{base_url}/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tagline}"
+        response = requests.get(account_url, headers={"X-Riot-Token": RIOT_API_KEY})
 
         if response.status_code != 200:
-            continue
+            return {"error": "Failed to fetch account data (Check Riot ID format)"}
 
-        match_data = response.json()
-        match_time = match_data["info"]["gameCreation"] // 1000  # Convert ms to seconds
-        match_datetime = datetime.utcfromtimestamp(match_time)
-        
-        for participant in match_data["info"]["participants"]:
-            if participant["puuid"] == puuid:
-                if participant["win"]:
-                    total_wins += 1
-                else:
-                    total_losses += 1
+        account_data = response.json()
+        puuid = account_data["puuid"]
 
-                total_playtime += match_data["info"]["gameDuration"]  # Game duration in seconds
+        match_url = f"{base_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=100"
+        response = requests.get(match_url, headers={"X-Riot-Token": RIOT_API_KEY})
 
-        if match_datetime < one_week_ago:
-            break
+        if response.status_code != 200:
+            return {"error": "Failed to fetch match history"}
 
-    hours = total_playtime // 3600
-    minutes = (total_playtime % 3600) // 60
+        match_ids = response.json()
+        if not match_ids:
+            return {"error": "No matches found"}
 
-    return {
-        "last_match_id": match_ids[0],
-        "total_wins": total_wins,
-        "total_losses": total_losses,
-        "total_playtime": f"{hours}h {minutes}m"
-    }
+        total_wins = 0
+        total_losses = 0
+        total_playtime = 0
+        one_week_ago = datetime.utcnow() - timedelta(days=7)
+
+        for match_id in match_ids:
+            match_detail_url = f"{base_url}/lol/match/v5/matches/{match_id}"
+            response = requests.get(match_detail_url, headers={"X-Riot-Token": RIOT_API_KEY})
+
+            if response.status_code != 200:
+                continue
+
+            match_data = response.json()
+            match_time = match_data["info"]["gameCreation"] // 1000
+            match_datetime = datetime.utcfromtimestamp(match_time)
+
+            if match_datetime < one_week_ago:
+                break
+
+            for participant in match_data["info"]["participants"]:
+                if participant["puuid"] == puuid:
+                    if participant["win"]:
+                        total_wins += 1
+                    else:
+                        total_losses += 1
+
+                    total_playtime += match_data["info"]["gameDuration"]
+
+        hours = total_playtime // 3600
+        minutes = (total_playtime % 3600) // 60
+
+        return {
+            "riot_username": summoner_name, 
+            "riot_tagline": tagline,     
+            "total_wins": total_wins,
+            "total_losses": total_losses,
+            "total_playtime": f"{hours}h {minutes}m"
+        }
+
+    except Exception as e:
+        return {"error": f"Unexpected error: {str(e)}"}
+
 
 if __name__ == '__main__':
     app.run(debug=True)
