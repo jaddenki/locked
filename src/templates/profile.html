@@ -12,13 +12,15 @@
         <p>Last Name: {{ user_info['last_name'] }}</p>
         <p>Email: {{ user_info['email'] }}</p>
         <h3>Posts</h3>
-        <h3>Last Match Result</h3>
-        {% if match_data.error %}
-        <p>Error: {{ match_data.error }}</p>
-        {% else %}
-        <p>Match ID: {{ match_data.match_id }}</p>
-        <p>Result: {{ match_data.result }}</p>
-        {% endif %}
+        <h3>Last 10 Games Summary</h3>
+{% if match_stats.error %}
+<p>Error: {{ match_stats.error }}</p>
+{% else %}
+<p>Total Wins: {{ match_stats.total_wins }}</p>
+<p>Total Losses: {{ match_stats.total_losses }}</p>
+<p>Total Playtime (Last 7 Days): {{ match_stats.total_playtime }}</p>
+{% endif %}
+
 
         <a href="{{ url_for('create_post', hashed_id=hashed_id) }}">Create New Post</a>
         <ul>

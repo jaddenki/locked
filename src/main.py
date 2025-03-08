@@ -10,6 +10,7 @@ import sqlite3
 import hashlib
 import datetime
 import requests
+from datetime import datetime, timedelta
 
 # ######################################################
 # No Module - Level Variables or Statements !
@@ -94,9 +95,10 @@ def profile(hashed_id):
     posts = conn.execute('SELECT * FROM posts WHERE user_id = ? ORDER BY timestamp DESC', (user['id'],)).fetchall()
     conn.close()
     
-    match_data = get_last_match("toaster#Kakrl")
+    match_stats = get_match_stats("kiwi#rii")
     
-    return render_template('profile.html', user_info=user_info, posts=posts, hashed_id=hashed_id, match_data=match_data)
+    return render_template('profile.html', user_info=user_info, posts=posts, hashed_id=hashed_id, match_stats=match_stats)
+
 
 
 
@@ -137,7 +139,7 @@ def delete_post(post_id, hashed_id):
     conn.close()
     return redirect(url_for('profile', hashed_id=hashed_id))
 
-def get_last_match(riot_id):
+def get_match_stats(riot_id):
     base_url = "https://americas.api.riotgames.com"
 
     summoner_name, tagline = riot_id.split("#")
@@ -151,7 +153,7 @@ def get_last_match(riot_id):
     account_data = response.json()
     puuid = account_data["puuid"]
 
-    match_url = f"https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=1"
+    match_url = f"{base_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=10"
     response = requests.get(match_url, headers={"X-Riot-Token": RIOT_API_KEY})
 
     if response.status_code != 200:
@@ -161,21 +163,43 @@ def get_last_match(riot_id):
     if not match_ids:
         return {"error": "No matches found"}
 
-    last_match_id = match_ids[0]
-    match_detail_url = f"https://americas.api.riotgames.com/lol/match/v5/matches/{last_match_id}"
-    response = requests.get(match_detail_url, headers={"X-Riot-Token": RIOT_API_KEY})
+    total_wins = 0
+    total_losses = 0
+    total_playtime = 0
+    one_week_ago = datetime.utcnow() - timedelta(days=7)
 
-    if response.status_code != 200:
-        return {"error": "Failed to fetch match details"}
+    for match_id in match_ids:
+        match_detail_url = f"{base_url}/lol/match/v5/matches/{match_id}"
+        response = requests.get(match_detail_url, headers={"X-Riot-Token": RIOT_API_KEY})
 
-    match_data = response.json()
+        if response.status_code != 200:
+            continue
 
-    for participant in match_data["info"]["participants"]:
-        if participant["puuid"] == puuid:
-            result = "Win" if participant["win"] else "Loss"
-            return {"match_id": last_match_id, "result": result}
+        match_data = response.json()
+        match_time = match_data["info"]["gameCreation"] // 1000  # Convert ms to seconds
+        match_datetime = datetime.utcfromtimestamp(match_time)
+        
+        for participant in match_data["info"]["participants"]:
+            if participant["puuid"] == puuid:
+                if participant["win"]:
+                    total_wins += 1
+                else:
+                    total_losses += 1
 
-    return {"error": "Match data not found"}
+                total_playtime += match_data["info"]["gameDuration"]  # Game duration in seconds
+
+        if match_datetime < one_week_ago:
+            break
+
+    hours = total_playtime // 3600
+    minutes = (total_playtime % 3600) // 60
+
+    return {
+        "last_match_id": match_ids[0],
+        "total_wins": total_wins,
+        "total_losses": total_losses,
+        "total_playtime": f"{hours}h {minutes}m"
+    }
 
 if __name__ == '__main__':
     app.run(debug=True)
