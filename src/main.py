@@ -9,6 +9,7 @@ from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 import hashlib
 import datetime
+import requests
 
 # ######################################################
 # No Module - Level Variables or Statements !
@@ -17,6 +18,8 @@ import datetime
 
 
 app = Flask(__name__)
+
+RIOT_API_KEY = "RGAPI-562dcb9e-3edb-45f6-b812-41a8b6698bad"
 
 def get_db_connection():
     conn = sqlite3.connect('data/company.db')
@@ -90,7 +93,12 @@ def profile(hashed_id):
     user_info = conn.execute('SELECT * FROM user_info WHERE user_id = ?', (user['id'],)).fetchone()
     posts = conn.execute('SELECT * FROM posts WHERE user_id = ? ORDER BY timestamp DESC', (user['id'],)).fetchall()
     conn.close()
-    return render_template('profile.html', user_info=user_info, posts=posts, hashed_id=hashed_id)
+    
+    match_data = get_last_match("toaster#Kakrl")
+    
+    return render_template('profile.html', user_info=user_info, posts=posts, hashed_id=hashed_id, match_data=match_data)
+
+
 
 @app.route('/<hashed_id>/create', methods=['GET', 'POST'])
 def create_post(hashed_id):
@@ -128,6 +136,46 @@ def delete_post(post_id, hashed_id):
     conn.commit()
     conn.close()
     return redirect(url_for('profile', hashed_id=hashed_id))
+
+def get_last_match(riot_id):
+    base_url = "https://americas.api.riotgames.com"
+
+    summoner_name, tagline = riot_id.split("#")
+
+    account_url = f"{base_url}/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tagline}"
+    response = requests.get(account_url, headers={"X-Riot-Token": RIOT_API_KEY})
+
+    if response.status_code != 200:
+        return {"error": "Failed to fetch account data (Check Riot ID format)"}
+
+    account_data = response.json()
+    puuid = account_data["puuid"]
+
+    match_url = f"https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=1"
+    response = requests.get(match_url, headers={"X-Riot-Token": RIOT_API_KEY})
+
+    if response.status_code != 200:
+        return {"error": "Failed to fetch match history"}
+
+    match_ids = response.json()
+    if not match_ids:
+        return {"error": "No matches found"}
+
+    last_match_id = match_ids[0]
+    match_detail_url = f"https://americas.api.riotgames.com/lol/match/v5/matches/{last_match_id}"
+    response = requests.get(match_detail_url, headers={"X-Riot-Token": RIOT_API_KEY})
+
+    if response.status_code != 200:
+        return {"error": "Failed to fetch match details"}
+
+    match_data = response.json()
+
+    for participant in match_data["info"]["participants"]:
+        if participant["puuid"] == puuid:
+            result = "Win" if participant["win"] else "Loss"
+            return {"match_id": last_match_id, "result": result}
+
+    return {"error": "Match data not found"}
 
 if __name__ == '__main__':
     app.run(debug=True)
