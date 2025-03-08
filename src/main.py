@@ -83,6 +83,9 @@ def profile(hashed_id):
 
 @app.route('/<hashed_id>/create', methods=['GET', 'POST'])
 def create_post(hashed_id):
+    if 'hashed_id' not in session or session['hashed_id'] != hashed_id:
+        return redirect(url_for('profile', hashed_id=session['hashed_id']))
+    
     conn = get_db_connection()
     user = conn.execute('SELECT * FROM users WHERE hashed_id = ?', (hashed_id,)).fetchone()
     conn.close()

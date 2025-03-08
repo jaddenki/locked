@@ -4,7 +4,7 @@
     <title>Profile</title>
     <link rel="stylesheet" type="text/css" href="../static/styles.css">
     <script src="{{ url_for('static', filename='scripts.js') }}"></script>
-    </head>
+</head>
 <body>
     <div class="container">
         <h2>Profile</h2>
@@ -12,8 +12,10 @@
         <p>Last Name: {{ user_info['last_name'] }}</p>
         <p>Email: {{ user_info['email'] }}</p>
         <h3>Posts</h3>
-        <a href="{{ url_for('create_post', hashed_id=hashed_id) }}">Create New Post</a>
-        <a href="{{ url_for('main', hashed_id=hashed_id) }}">View All Accounts and Posts</a> <!-- Link to Main page -->
+        {% if session['hashed_id'] == hashed_id %}
+            <a href="{{ url_for('create_post', hashed_id=hashed_id) }}">Create New Post</a>
+        {% endif %}
+        <a href="{{ url_for('main', hashed_id=hashed_id) }}">View All Accounts and Posts</a> 
         <ul>
             {% for post in posts %}
             <li>
