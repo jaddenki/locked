@@ -1,19 +1,7 @@
-# ######################################################
-# Author : Jadden Picardal
-# email : jpicarda@purdue.edu
-# ID : ee364b17
-# Date : 03/04/2025
-# ######################################################
-
 from flask import Flask, render_template, request, redirect, url_for, session
 import sqlite3
 import hashlib
 import datetime
-
-# ######################################################
-# No Module - Level Variables or Statements !
-# ONLY FUNCTIONS BEYOND THIS POINT !
-# ######################################################
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with a secure secret key
@@ -95,6 +83,10 @@ def profile(hashed_id):
 
 @app.route('/<hashed_id>/create', methods=['GET', 'POST'])
 def create_post(hashed_id):
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE hashed_id = ?', (hashed_id,)).fetchone()
+    conn.close()
+    
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
@@ -102,7 +94,6 @@ def create_post(hashed_id):
         post_id = hash_string(title + timestamp)
         
         conn = get_db_connection()
-        user = conn.execute('SELECT * FROM users WHERE hashed_id = ?', (hashed_id,)).fetchone()
         
         if user:
             conn.execute('INSERT INTO posts (title, content, timestamp, user_id) VALUES (?, ?, ?, ?)',
