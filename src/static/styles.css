@@ -105,6 +105,14 @@ a:hover {
     margin-bottom: 5px;
     font-weight: bold;
 }
+.footer {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    padding: 10px;
+    background-color: #f1f1f1;
+    border-top-left-radius: 10px;
+}
 
 .post {
     border: 3px solid black;

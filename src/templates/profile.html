@@ -4,7 +4,7 @@
     <title>Profile</title>
     <link rel="stylesheet" type="text/css" href="../static/styles.css">
     <script src="{{ url_for('static', filename='scripts.js') }}"></script>
-</head>
+    </head>
 <body>
     <div class="container">
         <h2>Profile</h2>
@@ -13,13 +13,14 @@
         <p>Email: {{ user_info['email'] }}</p>
         <h3>Posts</h3>
         <a href="{{ url_for('create_post', hashed_id=hashed_id) }}">Create New Post</a>
+        <a href="{{ url_for('main', hashed_id=hashed_id) }}">View All Accounts and Posts</a> <!-- Link to Main page -->
         <ul>
             {% for post in posts %}
             <li>
                 <a href="javascript:void(0);" onclick="togglePostContent('{{ post['id'] }}')">{{ post['title'] }}</a> - {{ post['timestamp'] }}
                 <div id="content-{{ post['id'] }}" style="display: none;">
                     <p>{{ post['content'] }}</p>
-                    <form action="{{ url_for('view_post', post_id=post['id']) }}" method="get" style="display:inline;">
+                    <form action="{{ url_for('view_post', post_id=post['id'], hashed_id=hashed_id) }}" method="get" style="display:inline;">
                         <button type="submit">View</button>
                     </form>
                     <form action="{{ url_for('delete_post', post_id=post['id'], hashed_id=hashed_id) }}" method="post" style="display:inline;">
@@ -29,6 +30,9 @@
             </li>
             {% endfor %}
         </ul>
+    </div>
+    <div class="footer">
+        Logged in as: {{ username }}
     </div>
 </body>
 </html>

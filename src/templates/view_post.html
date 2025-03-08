@@ -4,10 +4,20 @@
     <title>View Post</title>
     <link rel="stylesheet" type="text/css" href="../static/styles.css">
 </head>
+
 <body>
-    <h2>{{ post['title'] }}</h2>
-    <p>{{ post['content'] }}</p>
-    <p>Posted by: {{ username }}</p>
-    <p>Timestamp: {{ post['timestamp'] }}</p>
+    <div class="container">
+        <h2>{{ post['title'] }}</h2>
+        <p>{{ post['content'] }}</p>
+        <p>Posted by: {{ username }} on {{ post['timestamp'] }}</p>
+        {% if from_profile %}
+            <a href="{{ url_for('profile', hashed_id=hashed_id) }}">Back to Profile</a>
+        {% else %}
+            <a href="{{ url_for('main', hashed_id=hashed_id) }}">Back to Main</a>
+        {% endif %}
+    </div>
+    <div class="footer">
+        Logged in as: {{ session['username'] }}
+    </div>
 </body>
 </html>

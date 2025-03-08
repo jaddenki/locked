@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>All Posts</title>
+    <link rel="stylesheet" type="text/css" href="../static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h2>All Posts</h2>
+        <ul>
+            {% for post in posts %}
+            <li>
+                <strong>{{ post['username'] }}</strong>: <a href="{{ url_for('view_post', post_id=post['id']) }}">{{ post['title'] }}</a> - {{ post['timestamp'] }}
+                <p>{{ post['content'] }}</p>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>
