@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-RIOT_API_KEY = "RGAPI-562dcb9e-3edb-45f6-b812-41a8b6698bad"
+RIOT_API_KEY = "RGAPI-7f976dbb-6a8b-4930-87ca-ff9b21b35b09"
 
 def get_db_connection():
     conn = sqlite3.connect('data/company.db')
@@ -131,7 +131,7 @@ def get_match_stats(riot_id):
     response = requests.get(account_url, headers={"X-Riot-Token": RIOT_API_KEY})
 
     if response.status_code != 200:
-        return {"error": "Failed to fetch account data (Check Riot ID format)"}
+        return {"error": "dev key prob expired lol"}
 
     account_data = response.json()
     puuid = account_data["puuid"]
