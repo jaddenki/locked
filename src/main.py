@@ -91,7 +91,7 @@ def create_post(hashed_id):
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         post_id = hash_string(title + timestamp)
         
         conn = get_db_connection()
