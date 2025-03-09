@@ -4,6 +4,76 @@
     <title>Profile</title>
     <link rel="stylesheet" type="text/css" href="../static/styles.css">
     <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+    <style>
+        .stats-container {
+            background-color: #f5f5f5;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .league-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .playtime-msg {
+            font-style: italic;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .kda-display {
+            font-size: 1.2em;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        
+        .win-rate {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .win-rate-bar {
+            height: 20px;
+            width: 200px;
+            background-color: #e74b3c;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .win-rate-fill {
+            height: 100%;
+            background: #4CAF50;
+        }
+        
+        .champions-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .champion-tag {
+            background-color: #e0e0e0;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.9em;
+        }
+        
+        .red { color: #e74c3c; }
+        .orange { color: #e67e22; }
+        .green { color: #2ecc71; }
+        .blue { color: #3498db; }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -11,16 +81,42 @@
         <p>First Name: {{ user_info['first_name'] }}</p>
         <p>Last Name: {{ user_info['last_name'] }}</p>
         <p>Email: {{ user_info['email'] }}</p>
-        <h3>Posts</h3>
-        <h3>League Stats</h3>
-        {% if match_stats.error %}
-        <p>Error: {{ match_stats.error }}</p>
-        {% else %}
-        <p>{{ match_stats.riot_username }}#{{ match_stats.riot_tag }} has played {{ match_stats.total_playtime }} of league in the last week. point and laugh.</p>
-        <p>wins: {{ match_stats.total_wins }}</p>
-        <p>losses: {{ match_stats.total_losses }}</p>
-        {% endif %}
+        
+        <div class="stats-container">
+            <div class="league-header">
+                <h3>the league container</h3>
+                <p>Riot ID: <strong>{{ match_stats.riot_username }}#{{ match_stats.riot_tag }}</strong></p>
+            </div>
+            
+            {% if match_stats.error %}
+                <p>Error: {{ match_stats.error }}</p>
+            {% else %}
+                <p>{{ match_stats.riot_username }}#{{ match_stats.riot_tag }} has played {{ match_stats.total_playtime }} of league in the last week. point and laugh.</p>
+                <p class="playtime-msg">{{ match_stats.playtime_msg }}</p>
+                
+                <h4>performance ig</h4>
+                <p>KDA: <span class="kda-display {{ match_stats.kda_color }}">{{ match_stats.total_kills }}/{{ match_stats.total_deaths }}/{{ match_stats.total_assists }} ({{ match_stats.kda }})</span></p>
+                
+                <div class="win-rate">
+                    <p>Win Rate: <strong>{{ match_stats.win_rate }}%</strong> ({{ match_stats.total_wins }}W {{ match_stats.total_losses }}L)</p>
+                    <div class="win-rate-bar">
+                        <div class="win-rate-fill" style="--win-rate: {{ match_stats.win_rate }}%; width: var(--win-rate);"></div>
+                    </div>
+                </div>
+                
+                
+                {% if match_stats.champions_played %}
+                    <h4>what champs r u playing</h4>
+                    <div class="champions-list">
+                        {% for champion in match_stats.champions_played %}
+                            <span class="champion-tag">{{ champion }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
 
+        <h3>Posts</h3>
         <a href="{{ url_for('create_post', hashed_id=hashed_id) }}">Create New Post</a>
         <ul>
             {% for post in posts %}

@@ -80,7 +80,7 @@ def profile(hashed_id):
     posts = conn.execute('SELECT * FROM posts WHERE user_id = ? ORDER BY timestamp DESC', (user['id'],)).fetchall()
     conn.close()
     
-    riot_id = "qqiangi#NA1"
+    riot_id = "kiwi#rii"
     match_stats = get_match_stats(riot_id)
     
     return render_template('profile.html', user_info=user_info, posts=posts, hashed_id=hashed_id, match_stats=match_stats)
@@ -125,70 +125,142 @@ def delete_post(post_id, hashed_id):
 
 def get_match_stats(riot_id):
     base_url = "https://americas.api.riotgames.com"
+    summoner_name, tagline = riot_id.split("#")
 
-    try:
-        summoner_name, tagline = riot_id.split("#")
-        account_url = f"{base_url}/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tagline}"
-        response = requests.get(account_url, headers={"X-Riot-Token": RIOT_API_KEY})
+    account_url = f"{base_url}/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tagline}"
+    response = requests.get(account_url, headers={"X-Riot-Token": RIOT_API_KEY})
 
-        if response.status_code != 200:
-            return {"error": "Failed to fetch account data (Check Riot ID format)"}
+    if response.status_code != 200:
+        return {"error": "Failed to fetch account data (Check Riot ID format)"}
 
-        account_data = response.json()
-        puuid = account_data["puuid"]
+    account_data = response.json()
+    puuid = account_data["puuid"]
 
-        match_url = f"{base_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=100"
+    one_week_ago = datetime.utcnow() - timedelta(days=7)
+    start = 0
+    count = 20
+    match_ids = []
+
+    while True:
+        match_url = f"{base_url}/lol/match/v5/matches/by-puuid/{puuid}/ids?start={start}&count={count}"
         response = requests.get(match_url, headers={"X-Riot-Token": RIOT_API_KEY})
 
         if response.status_code != 200:
             return {"error": "Failed to fetch match history"}
 
-        match_ids = response.json()
-        if not match_ids:
-            return {"error": "No matches found"}
+        new_match_ids = response.json()
+        if not new_match_ids:
+            break
 
-        total_wins = 0
-        total_losses = 0
-        total_playtime = 0
-        one_week_ago = datetime.utcnow() - timedelta(days=7)
+        match_ids.extend(new_match_ids)
+        start += count
 
-        for match_id in match_ids:
-            match_detail_url = f"{base_url}/lol/match/v5/matches/{match_id}"
-            response = requests.get(match_detail_url, headers={"X-Riot-Token": RIOT_API_KEY})
+        match_detail_url = f"{base_url}/lol/match/v5/matches/{new_match_ids[-1]}"
+        response = requests.get(match_detail_url, headers={"X-Riot-Token": RIOT_API_KEY})
 
-            if response.status_code != 200:
-                continue
+        if response.status_code != 200:
+            continue
 
-            match_data = response.json()
-            match_time = match_data["info"]["gameCreation"] // 1000
-            match_datetime = datetime.utcfromtimestamp(match_time)
+        match_data = response.json()
+        match_time = match_data["info"]["gameCreation"] // 1000
+        match_datetime = datetime.utcfromtimestamp(match_time)
 
-            if match_datetime < one_week_ago:
-                break
+        if match_datetime < one_week_ago:
+            break
 
-            for participant in match_data["info"]["participants"]:
-                if participant["puuid"] == puuid:
-                    if participant["win"]:
-                        total_wins += 1
-                    else:
-                        total_losses += 1
+    total_wins = 0
+    total_losses = 0
+    total_playtime = 0
+    total_kills = 0
+    total_deaths = 0
+    total_assists = 0
+    champions_played = []
 
-                    total_playtime += match_data["info"]["gameDuration"]
+    for match_id in match_ids:
+        match_detail_url = f"{base_url}/lol/match/v5/matches/{match_id}"
+        response = requests.get(match_detail_url, headers={"X-Riot-Token": RIOT_API_KEY})
 
-        hours = total_playtime // 3600
-        minutes = (total_playtime % 3600) // 60
+        if response.status_code != 200:
+            continue
 
-        return {
-            "riot_username": summoner_name, 
-            "riot_tagline": tagline,     
-            "total_wins": total_wins,
-            "total_losses": total_losses,
-            "total_playtime": f"{hours}h {minutes}m"
-        }
+        match_data = response.json()
+        match_time = match_data["info"]["gameCreation"] // 1000
+        match_datetime = datetime.utcfromtimestamp(match_time)
 
-    except Exception as e:
-        return {"error": f"Unexpected error: {str(e)}"}
+        if match_datetime < one_week_ago:
+            continue
 
+        for participant in match_data["info"]["participants"]:
+            if participant["puuid"] == puuid:
+                if participant["win"]:
+                    total_wins += 1
+                else:
+                    total_losses += 1
+
+                total_kills += participant["kills"]
+                total_deaths += participant["deaths"] if participant["deaths"] > 0 else 1
+                total_assists += participant["assists"]
+
+                if participant["championName"] not in champions_played:
+                    champions_played.append(participant["championName"])
+
+                total_playtime += match_data["info"]["gameDuration"]
+
+    win_rate = calculate_win_rate(total_wins, total_losses)
+
+    hours = total_playtime // 3600
+    minutes = (total_playtime % 3600) // 60
+    kda = (total_kills + total_assists) / total_deaths if total_deaths > 0 else total_kills + total_assists
+    playtime_msg = get_playtime_msg(hours)
+    kda_color = get_kda_color(kda)
+
+
+    return {
+        "riot_username": summoner_name,
+        "riot_tag": tagline,
+        "total_wins": total_wins,
+        "total_losses": total_losses,
+        "total_kills": total_kills,
+        "total_deaths": total_deaths,
+        "total_assists": total_assists,
+        "kda": round(kda, 2),
+        "kda_color": kda_color,
+        "champions_played": champions_played,
+        "total_playtime": f"{hours}h {minutes}m",
+        "playtime_msg": playtime_msg,
+        "hours_played": hours,
+        "win_rate": win_rate,
+    }
+
+def get_playtime_msg(hours):
+    if hours == 0:
+        return "so locked in. i'm proud of you"
+    elif hours < 3:
+        return "not bad tbh. healthy dose of league"
+    elif hours < 8:
+        return "erm... could be worse?"
+    elif hours < 15:
+        return "it's time to touch grass"
+    elif hours < 25:
+        return "TAKE A SHOWER NOW"
+    else:
+        return "get help'"
+
+def get_kda_color(kda):
+    if kda < 1.5:
+        return "red"
+    elif kda < 3:
+        return "orange"
+    elif kda < 5:
+        return "green"
+    else:
+        return "blue"
+
+def calculate_win_rate(wins, losses):
+    total_games = wins + losses
+    if total_games == 0:
+        return 0
+    return round((wins / total_games) * 100, 1)
 
 if __name__ == '__main__':
     app.run(debug=True)
